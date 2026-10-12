@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101827">
+<title>Sammii Trade Simulator</title>
+<style>
+:root{--bg:#0b1220;--panel:#121d30;--line:#26354b;--text:#eef4ff;--muted:#9eb0c8;--green:#35d39a;--red:#ff667a;--blue:#78aaff}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#101a2b,#080e18);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:760px;margin:auto;padding:18px 14px 36px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}.brand{font-weight:800;letter-spacing:.04em}.tag{font-size:11px;color:#07130f;background:var(--green);padding:5px 8px;border-radius:999px;font-weight:800}
+.notice{background:#332a14;border:1px solid #67521e;color:#ffe8a3;padding:11px 12px;border-radius:12px;font-size:13px;margin-bottom:14px}
+.card{background:rgba(18,29,48,.96);border:1px solid var(--line);border-radius:18px;padding:17px;margin:12px 0;box-shadow:0 10px 28px #0002}
+.label{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.09em}.balance{font-size:clamp(29px,8vw,42px);font-weight:800;margin:5px 0}.sub{color:var(--muted);font-size:13px}.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{background:#0c1525;padding:12px;border-radius:12px}.stat strong{display:block;font-size:18px;margin-top:3px}
+.charthead{display:flex;justify-content:space-between;align-items:center;gap:8px}.price{font-size:24px;font-weight:750}canvas{width:100%;height:175px;display:block;margin-top:10px}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field{display:flex;flex-direction:column;gap:6px;margin:12px 0}.field label{font-size:13px;color:var(--muted)}input{width:100%;padding:13px;border-radius:10px;border:1px solid var(--line);background:#0b1423;color:var(--text);font-size:16px}
+button{border:0;border-radius:11px;padding:13px 10px;font-size:15px;font-weight:800;cursor:pointer}.buy{background:var(--green);color:#062116}.sell{background:var(--red);color:#2c0710}.secondary{background:#23334b;color:var(--text);width:100%;margin-top:10px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:10px 5px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:600}.empty{color:var(--muted);padding:12px 0;font-size:14px}
+footer{color:var(--muted);font-size:12px;text-align:center;margin-top:20px}
+@media(min-width:600px){.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:12px;align-items:start}.grid .card{margin-top:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><div class="brand">📈 SAMMII TRADE SIMULATOR</div><span class="tag">DEMO MODE</span></div>
+  <div class="notice"><strong>SIMULATION ONLY.</strong> Prices are fictional, not live market data. No real money, deposits, withdrawals, or actual trades are involved.</div>
+  <div class="grid">
+    <section>
+      <div class="card">
+        <div class="label">Virtual account balance</div>
+        <div class="balance" id="balance">KSh 100,000.00</div>
+        <div class="sub">Starting virtual cash: KSh 100,000</div>
+        <div class="stats" style="margin-top:15px">
+          <div class="stat"><span class="label">Open position</span><strong id="position">0.0000 units</strong></div>
+          <div class="stat"><span class="label">Unrealized P/L</span><strong id="upl">KSh 0.00</strong></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="charthead"><div><div class="label">Fictional demo asset</div><div class="price" id="price">KSh 1,000.00</div></div><div class="sub" id="move">Simulated price</div></div>
+        <canvas id="chart" aria-label="Fictional simulated price chart"></canvas>
+        <div class="sub">The chart changes locally in your browser and is not connected to an exchange.</div>
+      </div>
+    </section>
+    <section>
+      <div class="card">
+        <div class="label">Practice a trade</div>
+        <div class="field"><label for="qty">Units to trade</label><input id="qty" type="number" min="0.0001" step="0.0001" value="1"></div>
+        <div class="controls"><button class="buy" id="buy">BUY PRACTICE</button><button class="sell" id="sell">SELL PRACTICE</button></div>
+        <button class="secondary" id="reset">Reset demo account</button>
+        <p class="sub" id="message" role="status" aria-live="polite">Ready to practise. No real money is used.</p>
+      </div>
+      <div class="card">
+        <div class="label">Trade history</div>
+        <div id="history" class="empty">No trades yet. Your practice trades will appear here.</div>
+      </div>
+    </section>
+  </div>
+  <footer>Educational prototype by Sammii Learning Hub. No financial advice. No live prices. Do not use this demo to make real trading decisions.</footer>
+</div>
+<script>
+(() => {
+ const startCash=100000,startPrice=1000;
+ let cash=startCash,units=0,avg=0,price=startPrice,history=[],prices=Array.from({length:24},()=>startPrice);
+ const $=id=>document.getElementById(id);
+ const money=n=>'KSh '+n.toLocaleString('en-KE',{minimumFractionDigits:2,maximumFractionDigits:2});
+ function pnl(){return units*(price-avg)}
+ function render(){
+  $('balance').textContent=money(cash);
+  $('position').textContent=units.toFixed(4)+' units';
+  $('upl').textContent=money(pnl());$('upl').style.color=pnl()>0?'var(--green)':pnl()<0?'var(--red)':'var(--text)';
+  $('price').textContent=money(price);
+  $('move').textContent=price>=startPrice?'Above start':'Below start';
+  if(!history.length){$('history').className='empty';$('history').textContent='No trades yet. Your practice trades will appear here.'}
+  else {$('history').className='';$('history').innerHTML='<div style="overflow-x:auto"><table><thead><tr><th>Action</th><th>Units</th><th>Price</th></tr></thead><tbody>'+history.slice().reverse().map(t=>`<tr><td>${t.action}</td><td>${t.qty.toFixed(4)}</td><td>${money(t.price)}</td></tr>`).join('')+'</tbody></table></div>'}
+  draw();
+ }
+ function trade(action){
+  const q=Number($('qty').value);
+  if(!Number.isFinite(q)||q<=0){$('message').textContent='Enter a quantity greater than zero.';return}
+  if(action==='BUY'){
+   const cost=q*price;
+   if(cost>cash){$('message').textContent='Not enough virtual cash for that practice buy.';return}
+   avg=(units*avg+q*price)/(units+q);units+=q;cash-=cost;
+  }else{
+   if(q>units+1e-9){$('message').textContent='You cannot sell more units than your virtual position.';return}
+   units-=q;cash+=q*price;if(units<1e-8){units=0;avg=0}
+  }
+  history.push({action,qty:q,price});$('message').textContent=action+' practice order recorded at '+money(price)+'.';render();
+ }
+ $('buy').addEventListener('click',()=>trade('BUY'));$('sell').addEventListener('click',()=>trade('SELL'));
+ $('reset').addEventListener('click',()=>{cash=startCash;units=0;avg=0;price=startPrice;history=[];prices=Array.from({length:24},()=>startPrice);$('message').textContent='Demo account reset. Virtual cash restored.';render()});
+ function draw(){
+  const c=$('chart'),ctx=c.getContext('2d'),dpr=window.devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;
+  c.width=w*dpr;c.height=h*dpr;ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);
+  const min=Math.min(...prices)*.995,max=Math.max(...prices)*1.005,range=max-min||1;
+  ctx.strokeStyle='#26354b';ctx.lineWidth=1;
+  for(let i=1;i<4;i++){let y=h*i/4;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
+  ctx.beginPath();prices.forEach((p,i)=>{let x=i/(prices.length-1)*w,y=h-(p-min)/range*h;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)});
+  ctx.strokeStyle='#35d39a';ctx.lineWidth=2.5;ctx.stroke();
+  let last=prices[prices.length-1],y=h-(last-min)/range*h;ctx.fillStyle='#35d39a';ctx.beginPath();ctx.arc(w-2,y,3,0,Math.PI*2);ctx.fill();
+ }
+ setInterval(()=>{price=Math.max(10,price*(1+(Math.random()-.5)*.018));prices.push(price);if(prices.length>36)prices.shift();render()},2500);
+ window.addEventListener('resize',draw);render();
+})();
+</script>
+</body>
+</html>
